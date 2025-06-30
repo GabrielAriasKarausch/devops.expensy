@@ -1,0 +1,46 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: grafana
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: grafana
+  template:
+    metadata:
+      labels:
+        app: grafana
+    spec:
+      containers:
+      - name: grafana
+        image: grafana/grafana
+        ports:
+          - containerPort: 3000
+        volumeMounts:
+          - name: grafana-dashboards
+            mountPath: /var/lib/grafana/dashboards
+          - name: grafana-dashboard-provider
+            mountPath: /etc/grafana/provisioning/dashboards
+        env:
+          - name: GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH
+            value: /var/lib/grafana/dashboards/kubernetes-dashboard.json
+      volumes:
+        - name: grafana-dashboards
+          configMap:
+            name: grafana-dashboard-config
+        - name: grafana-dashboard-provider
+          configMap:
+            name: grafana-dashboard-provider
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: grafana-service
+spec:
+  type: LoadBalancer
+  selector:
+    app: grafana
+  ports:
+    - port: 3000
+      targetPort: 3000

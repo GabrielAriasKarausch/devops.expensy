@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:latest
+    container_name: mongo
+    restart: always
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - mongo_data:/data/db
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    command: redis-server --requirepass someredispassword
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
+  backend:
+    build:
+      context: ./expensy_backend
+    container_name: expensy_backend
+    restart: always
+    ports:
+      - "8706:8706"
+    env_file:
+      - ./expensy_backend/.env
+    depends_on:
+      - mongo
+      - redis
+    # ✅ No montes /app porque ya está copiado en la imagen. Evita conflictos con node_modules
+    volumes:
+      - ./expensy_backend:/app
+      - /app/node_modules
+    command: ["npx", "ts-node-dev", "--respawn", "--transpile-only", "src/server.ts"]
+
+  frontend:
+    build:
+      context: ./expensy_frontend
+    container_name: expensy_frontend
+    restart: always
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    environment:
+      - NEXT_PUBLIC_API_URL=http://backend:8706
+    # ✅ Quitamos el volumen porque ya lo copia el Dockerfile en producción
+    # Si quieres desarrollo con hot reload, se puede habilitar en otro perfil
+    # volumes:
+    #   - ./expensy_frontend:/app
+
+volumes:
+  mongo_data:
+  redis_data:

@@ -1,0 +1,63 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  labels:
+    name: prometheus-config
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+
+    scrape_configs:
+      - job_name: 'kubernetes-pods'
+        kubernetes_sd_configs:
+          - role: pod
+        tls_config:
+          insecure_skip_verify: true   # Ignorar errores TLS para API server
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: true
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)
+          - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            regex: (.+):(?:\d+);(\d+)
+            replacement: $1:$2
+            target_label: __address__
+
+      - job_name: 'kube-state-metrics'
+        static_configs:
+          - targets: ['kube-state-metrics.default.svc.cluster.local:8080']
+
+      - job_name: 'node-exporter'
+        static_configs:
+          - targets: ['node-exporter-prometheus-node-exporter.default.svc.cluster.local:9100']
+
+      - job_name: 'cadvisor'
+        static_configs:
+          - targets: ['cadvisor.default.svc.cluster.local:8080']
+
+      - job_name: 'backend'
+        static_configs:
+          - targets: ['backend.default.svc.cluster.local:8706']
+
+      # - job_name: 'kubelets'          # Comentado porque puerto 10250 inaccesible en EKS
+      #   scheme: https
+      #   tls_config:
+      #     ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+      #     insecure_skip_verify: true
+      #   bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+      #   kubernetes_sd_configs:
+      #     - role: node
+      #   relabel_configs:
+      #     - action: labelmap
+      #       regex: __meta_kubernetes_node_label_(.+)
+      #     - source_labels: [__address__]
+      #       regex: ^([^:]+)(?::\d+)?$
+      #       replacement: $1:10250
+      #       target_label: __address__
+      #   metrics_path: /metrics/cadvisor
