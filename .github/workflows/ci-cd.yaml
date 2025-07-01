@@ -57,7 +57,7 @@ jobs:
         aws-region: us-west-1
 
     - name: Update kubeconfig
-      run: aws eks update-kubeconfig --name expensy-cluster
+      run: aws eks update-kubeconfig --name gabo-eks-lab
 
     - name: Deploy to EKS
       run: |
